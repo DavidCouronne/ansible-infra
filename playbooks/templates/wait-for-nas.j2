@@ -1,0 +1,12 @@
+[Unit]
+Description=Attend que le NAS {{ nas_share }} soit joignable
+After=network-online.target NetworkManager-wait-online.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/wait-for-nas-{{ nas_share }}.sh
+TimeoutStartSec=240
+Restart=on-failure
+RestartSec=10

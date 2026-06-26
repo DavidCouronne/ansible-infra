@@ -1,0 +1,15 @@
+[Unit]
+Description=Montage Samba {{ nas_share }}
+After=network-online.target {{ wait_service_name }}
+Requires={{ wait_service_name }}
+Wants=network-online.target
+
+[Mount]
+What=//{{ nas_ip }}/{{ nas_share }}
+Where={{ target_mount_path }}
+Type=cifs
+Options=credentials={{ credentials_path }},_netdev,nofail,uid=1000,gid=1000,file_mode=0664,dir_mode=0775,iocharset=utf8,vers=3.0,x-systemd.mount-timeout=60s
+TimeoutSec=60
+
+[Install]
+WantedBy=multi-user.target

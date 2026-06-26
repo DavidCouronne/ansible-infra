@@ -1,0 +1,30 @@
+---
+- name: Bazzite — Configuration des Politiques de Sécurité SELinux
+  hosts: bazzite_hosts
+  gather_facts: false
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    # On ne garde que le strict nécessaire pour le réseau distant
+    selinux_booleans:
+      - httpd_use_cifs
+
+  tasks:
+    - name: "Garantir l'activation persistante des booléens SELinux requis"
+      ansible.posix.seboolean:
+        name: "{{ item }}"
+        state: true
+        persistent: true
+      loop: "{{ selinux_booleans }}"
+
+    - name: "Vérification de l'état actuel"
+      ansible.builtin.command: "getsebool {{ item }}"
+      loop: "{{ selinux_booleans }}"
+      register: sebool_status
+      changed_when: false
+
+    - name: "Afficher le statut SELinux pour validation"
+      ansible.builtin.debug:
+        msg: "{{ item.stdout }}"
+      loop: "{{ sebool_status.results }}"

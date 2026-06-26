@@ -1,30 +1,38 @@
 [Unit]
 Description=Jellyfin Media Server
-After=var-home-famille-nas-PlexMediaServer.mount var-home-famille-nas-video.mount
-Requires=var-home-famille-nas-PlexMediaServer.mount var-home-famille-nas-video.mount
+Description=Jellyfin Media Server
+After=network-online.target
+Wants=network-online.target
+
+# Dépendances plus souples (seulement After, pas Requires)
+After=var-home-famille-nas-video.mount var-home-famille-nas-PlexMediaServer.mount
+
 [Container]
 Image=docker.io/jellyfin/jellyfin:latest
 ContainerName=jellyfin
 
-# Données et config Jellyfin (persistantes)
-Volume=/var/home/{{ ansible_user }}/.local/share/jellyfin/config:/config:Z
-Volume=/var/home/{{ ansible_user }}/.local/share/jellyfin/cache:/cache:Z
+# Config et cache
+Volume={{ jellyfin_config_dir }}:/config:Z
+Volume={{ jellyfin_cache_dir }}:/cache:Z
 
-# Montages NAS en lecture seule
-Volume=/var/home/{{ ansible_user }}/nas/video:/media/video
-Volume=/var/home/{{ ansible_user }}/nas/PlexMediaServer:/media/plex
+# Médiathèques NAS
+Volume=/var/home/{{ ansible_user }}/nas/video:/media/video:ro
+Volume=/var/home/{{ ansible_user }}/nas/PlexMediaServer:/media/plex:ro
 
 # Disque interne
-Volume=/var/home/{{ ansible_user }}/internes/exos/Videos:/media/exos
+Volume=/var/home/{{ ansible_user }}/internes/exos/Videos:/media/exos:ro
 
-# Réseau
 Network=host
 PublishPort=127.0.0.1:8096:8096
+
+# Performance
+Security=seccomp=unconfined
+Environment=TZ=Europe/Paris
 
 [Service]
 Restart=always
 RestartSec=10
-TimeoutStartSec=120
+TimeoutStartSec=180
 
 [Install]
 WantedBy=default.target

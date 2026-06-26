@@ -1,53 +1,98 @@
 ---
-- name: Montage NAS video
+- name: Montage persistant NAS Samba (version robuste)
   hosts: bazzite_hosts
   gather_facts: true
+
   vars:
-    partage:
-      key: "video"           # nom du partage sur le NAS Synology
-      value: "nas/video"     # chemin relatif dans ton home
-    target_mount_path: "/var/home/{{ ansible_user }}/{{ partage.value }}"
-    escaped_unit_name: "{{ target_mount_path | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
+    nas_ip: "192.168.1.8"
+    nas_share: "video"
+    mount_subdir: "nas/video"
+    
+    target_mount_path: "/var/home/{{ ansible_user }}/{{ mount_subdir }}"
+    escaped_mount_name: "{{ target_mount_path | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
+    
+    credentials_path: "/var/home/{{ ansible_user }}/.smb/credentials"
+    wait_service_name: "wait-for-nas-{{ nas_share }}.service"
+    wait_script_path: "/usr/local/bin/wait-for-nas-{{ nas_share }}.sh"
 
   tasks:
-    - name: Créer le répertoire de montage
+
+    - name: Créer le répertoire .smb
+      ansible.builtin.file:
+        path: "/var/home/{{ ansible_user }}/.smb"
+        state: directory
+        mode: "0700"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+
+    - name: Déposer credentials SMB
+      ansible.builtin.copy:
+        dest: "{{ credentials_path }}"
+        content: |
+          username={{ nas_smb_username }}
+          password={{ nas_smb_password }}
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0600"
+
+    - name: Créer répertoire de montage
       ansible.builtin.file:
         path: "{{ target_mount_path }}"
         state: directory
         mode: "0755"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
 
-    - name: Déposer le fichier de credentials SMB
-      ansible.builtin.copy:
-        dest: "/etc/nascredentials"
-        content: |
-          username={{ nas_smb_username }}
-          password={{ nas_smb_password }}
+    # === Script d'attente ===
+    - name: Déployer le script d'attente
+      ansible.builtin.template:
+        src: "wait-for-nas-script.j2"
+        dest: "{{ wait_script_path }}"
         owner: root
         group: root
-        mode: "0600"
+        mode: "0755"
       become: true
 
-    - name: Générer l'unité systemd .mount
+    # === Service systemd ===
+    - name: Déployer le service wait-for-nas
       ansible.builtin.template:
-        src: "systemd_mount.j2"
-        dest: "/etc/systemd/system/{{ escaped_unit_name }}"
+        src: "wait-for-nas.j2"
+        dest: "/etc/systemd/system/{{ wait_service_name }}"
         owner: root
         group: root
         mode: "0644"
       become: true
-      notify: "Recharger et monter"
 
-    - name: Activer et démarrer le montage
+    # === Unité .mount ===
+    - name: Déployer l'unité .mount
+      ansible.builtin.template:
+        src: "cifs_mount.j2"
+        dest: "/etc/systemd/system/{{ escaped_mount_name }}"
+        owner: root
+        group: root
+        mode: "0644"
+      become: true
+
+    - name: Recharger systemd
       ansible.builtin.systemd:
-        name: "{{ escaped_unit_name }}"
+        daemon_reload: true
+      become: true
+
+    - name: Restaurer contexte SELinux
+      ansible.builtin.command: restorecon -v /etc/systemd/system/wait-for-nas-{{ nas_share }}* {{ wait_script_path }} /etc/systemd/system/{{ escaped_mount_name }}
+      become: true
+      changed_when: false
+
+    - name: Activer et démarrer le service d'attente
+      ansible.builtin.systemd:
+        name: "{{ wait_service_name }}"
         enabled: true
         state: started
       become: true
 
-  handlers:
-    - name: "Recharger et monter"
+    - name: Activer et démarrer le montage
       ansible.builtin.systemd:
-        name: "{{ escaped_unit_name }}"
-        daemon_reload: true
-        state: restarted
+        name: "{{ escaped_mount_name }}"
+        enabled: true
+        state: started
       become: true

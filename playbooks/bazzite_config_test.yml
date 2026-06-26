@@ -1,0 +1,53 @@
+---
+- name: Validation de l'infrastructure — Test de droits Podman + SELinux + Samba
+  hosts: bazzite_hosts
+  gather_facts: true
+
+  vars:
+    test_local_path: "/var/home/{{ ansible_user }}/.local/share/infra_test_local"
+    test_samba_path: "/var/home/{{ ansible_user }}/nas/video"
+
+  tasks:
+    - name: "Préparation : Garantir la présence du dossier local de test"
+      ansible.builtin.file:
+        path: "{{ test_local_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: "Vérification : S'assurer que le point de montage Samba existe"
+      ansible.builtin.stat:
+        path: "{{ test_samba_path }}"
+      register: samba_stat
+
+    - name: "Échec immédiat si Samba n'est pas monté"
+      ansible.builtin.fail:
+        msg: "Le dossier Samba {{ test_samba_path }} est introuvable ou non monté."
+      # Correction ici : on teste explicitement si le dossier existe physiquement
+      when: not samba_stat.stat.exists
+
+    - name: "Exécution du conteneur de test (Alpine)"
+      # Ajout d'un touch sur /samba/ pour valider les droits d'écriture complets
+      ansible.builtin.command: >
+        podman run --rm
+        -v {{ test_local_path }}:/internal:Z
+        -v {{ test_samba_path }}:/samba:z
+        docker.io/library/alpine:latest
+        sh -c "ls -la /internal && ls -la /samba && touch /internal/prov_ansible.txt && touch /samba/prov_ansible_test.txt"
+      register: podman_test_output
+      changed_when: false
+      failed_when: podman_test_output.rc != 0
+
+    - name: "Affichage du résultat du test"
+      ansible.builtin.debug:
+        msg: 
+          - "Félicitations ! Le conteneur Podman a réussi à lire et écrire à travers SELinux."
+          - "Retour de la commande dans le conteneur :"
+          - "{{ podman_test_output.stdout_lines }}"
+
+    - name: "Nettoyage des fichiers temporaires (Hôte et Samba)"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ test_local_path }}/prov_ansible.txt"
+        - "{{ test_samba_path }}/prov_ansible_test.txt"

@@ -1,33 +1,44 @@
 ---
-- name: Déploiement Jellyfin
+- name: Déploiement Jellyfin + dépendances NAS
   hosts: bazzite_hosts
   gather_facts: true
 
   vars:
+    ansible_user: "famille"   # à adapter si besoin
     jellyfin_config_dir: "/var/home/{{ ansible_user }}/.local/share/jellyfin/config"
     jellyfin_cache_dir: "/var/home/{{ ansible_user }}/.local/share/jellyfin/cache"
     container_dest: "/var/home/{{ ansible_user }}/.config/containers/systemd/jellyfin.container"
+    
     selinux_paths:
       - "/var/home/{{ ansible_user }}/internes/exos/Videos"
 
+    # Montages NAS nécessaires pour Jellyfin
+    required_mounts:
+      - "var-home-famille-nas-video.mount"
+      - "var-home-famille-nas-PlexMediaServer.mount"
+
   tasks:
 
-    - name: Créer les répertoires config et cache Jellyfin
+    - name: Créer répertoires Jellyfin
       ansible.builtin.file:
         path: "{{ item }}"
         state: directory
         mode: "0755"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
       loop:
         - "{{ jellyfin_config_dir }}"
         - "{{ jellyfin_cache_dir }}"
 
-    - name: Créer le répertoire systemd utilisateur pour quadlet
+    - name: Créer répertoire systemd user
       ansible.builtin.file:
         path: "/var/home/{{ ansible_user }}/.config/containers/systemd"
         state: directory
         mode: "0755"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
 
-    - name: Appliquer le contexte SELinux permanent sur les dossiers internes
+    - name: Appliquer contexte SELinux permanent
       community.general.sefcontext:
         target: "{{ item }}(/.*)?"
         setype: container_file_t
@@ -35,35 +46,51 @@
       loop: "{{ selinux_paths }}"
       become: true
 
-    - name: Appliquer le contexte SELinux immédiatement (restorecon)
-      ansible.builtin.command:
-        cmd: "restorecon -Rv {{ item }}"
+    - name: restorecon immédiat
+      ansible.builtin.command: "restorecon -Rv {{ item }}"
       loop: "{{ selinux_paths }}"
       become: true
       changed_when: false
 
-    - name: Déployer le fichier jellyfin.container
+    # === Déploiement du .container ===
+    - name: Déployer jellyfin.container
       ansible.builtin.template:
         src: jellyfin.container.j2
         dest: "{{ container_dest }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
         mode: "0644"
-      notify: Recharger systemd utilisateur et démarrer Jellyfin
+      notify: Recharger systemd user
 
-    - name: S'assurer que Jellyfin est démarré
+    - name: Recharger systemd user
+      ansible.builtin.systemd:
+        daemon_reload: true
+        scope: user
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid | default(1000) }}"
+      notify: Redémarrer Jellyfin
+
+    - name: Démarrer Jellyfin
       ansible.builtin.systemd:
         name: jellyfin.service
         state: started
         enabled: true
         scope: user
       environment:
-        XDG_RUNTIME_DIR: "/run/user/1000"
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid | default(1000) }}"
 
   handlers:
-    - name: Recharger systemd utilisateur et démarrer Jellyfin
+    - name: Recharger systemd user
+      ansible.builtin.systemd:
+        daemon_reload: true
+        scope: user
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid | default(1000) }}"
+
+    - name: Redémarrer Jellyfin
       ansible.builtin.systemd:
         name: jellyfin.service
-        daemon_reload: true
         state: restarted
         scope: user
       environment:
-        XDG_RUNTIME_DIR: "/run/user/1000"
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid | default(1000) }}"
