@@ -107,7 +107,7 @@ ansible-vault edit group_vars/all/vault.yml
 ## Prompt de contexte pour Claude
 
 > J'ai un projet Ansible sur Mac pour piloter une machine Bazzite (Fedora Atomic) sur mon réseau local.
-> Voici le dépôt : [URL_GITHUB]
+> Voici le dépôt : https://github.com/DavidCouronne/ansible-infra
 >
 > Stack : macOS + Ansible dans un venv Python, machine cible Bazzite (IP 192.168.1.106, user `famille`), NAS Synology (IP 192.168.1.8).
 >
