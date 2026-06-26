@@ -17,9 +17,9 @@ ansible-infra/
 ├── playbooks/
 │   ├── mount_nas_video.yml         # Montage SMB NAS → ~/nas/video
 │   └── jellyfin.yml                # Déploiement Jellyfin (Podman quadlet)
-└── templates/
-    ├── systemd_mount.j2            # Template unité systemd .mount
-    └── jellyfin.container.j2       # Template Podman quadlet Jellyfin
+│   └── templates/
+        ├── systemd_mount.j2            # Template unité systemd .mount
+        └── jellyfin.container.j2       # Template Podman quadlet Jellyfin
 ```
 
 ## Machines gérées
