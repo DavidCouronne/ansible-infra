@@ -1,0 +1,53 @@
+---
+- name: Montage NAS video
+  hosts: bazzite_hosts
+  gather_facts: true
+  vars:
+    partage:
+      key: "video"           # nom du partage sur le NAS Synology
+      value: "nas/video"     # chemin relatif dans ton home
+    target_mount_path: "/var/home/{{ ansible_user }}/{{ partage.value }}"
+    escaped_unit_name: "{{ target_mount_path | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
+
+  tasks:
+    - name: Créer le répertoire de montage
+      ansible.builtin.file:
+        path: "{{ target_mount_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Déposer le fichier de credentials SMB
+      ansible.builtin.copy:
+        dest: "/etc/nascredentials"
+        content: |
+          username={{ nas_smb_username }}
+          password={{ nas_smb_password }}
+        owner: root
+        group: root
+        mode: "0600"
+      become: true
+
+    - name: Générer l'unité systemd .mount
+      ansible.builtin.template:
+        src: "systemd_mount.j2"
+        dest: "/etc/systemd/system/{{ escaped_unit_name }}"
+        owner: root
+        group: root
+        mode: "0644"
+      become: true
+      notify: "Recharger et monter"
+
+    - name: Activer et démarrer le montage
+      ansible.builtin.systemd:
+        name: "{{ escaped_unit_name }}"
+        enabled: true
+        state: started
+      become: true
+
+  handlers:
+    - name: "Recharger et monter"
+      ansible.builtin.systemd:
+        name: "{{ escaped_unit_name }}"
+        daemon_reload: true
+        state: restarted
+      become: true

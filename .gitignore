@@ -1,0 +1,29 @@
+# Environnement virtuel Python
+.venv/
+
+# Clé de déchiffrement Vault (CRITIQUE : ne jamais committer)
+.vault_pass
+
+# Fichiers temporaires Ansible
+*.retry
+.ansible/
+
+# Secrets en clair (si jamais créés par accident)
+vault_plain.yml
+*_plain.yml
+*_clear.yml
+/tmp/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+README-old.md

@@ -1,0 +1,69 @@
+---
+- name: Déploiement Jellyfin
+  hosts: bazzite_hosts
+  gather_facts: true
+
+  vars:
+    jellyfin_config_dir: "/var/home/{{ ansible_user }}/.local/share/jellyfin/config"
+    jellyfin_cache_dir: "/var/home/{{ ansible_user }}/.local/share/jellyfin/cache"
+    container_dest: "/var/home/{{ ansible_user }}/.config/containers/systemd/jellyfin.container"
+    selinux_paths:
+      - "/var/home/{{ ansible_user }}/internes/exos/Videos"
+
+  tasks:
+
+    - name: Créer les répertoires config et cache Jellyfin
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ jellyfin_config_dir }}"
+        - "{{ jellyfin_cache_dir }}"
+
+    - name: Créer le répertoire systemd utilisateur pour quadlet
+      ansible.builtin.file:
+        path: "/var/home/{{ ansible_user }}/.config/containers/systemd"
+        state: directory
+        mode: "0755"
+
+    - name: Appliquer le contexte SELinux permanent sur les dossiers internes
+      community.general.sefcontext:
+        target: "{{ item }}(/.*)?"
+        setype: container_file_t
+        state: present
+      loop: "{{ selinux_paths }}"
+      become: true
+
+    - name: Appliquer le contexte SELinux immédiatement (restorecon)
+      ansible.builtin.command:
+        cmd: "restorecon -Rv {{ item }}"
+      loop: "{{ selinux_paths }}"
+      become: true
+      changed_when: false
+
+    - name: Déployer le fichier jellyfin.container
+      ansible.builtin.template:
+        src: jellyfin.container.j2
+        dest: "{{ container_dest }}"
+        mode: "0644"
+      notify: Recharger systemd utilisateur et démarrer Jellyfin
+
+    - name: S'assurer que Jellyfin est démarré
+      ansible.builtin.systemd:
+        name: jellyfin.service
+        state: started
+        enabled: true
+        scope: user
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/1000"
+
+  handlers:
+    - name: Recharger systemd utilisateur et démarrer Jellyfin
+      ansible.builtin.systemd:
+        name: jellyfin.service
+        daemon_reload: true
+        state: restarted
+        scope: user
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/1000"

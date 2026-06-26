@@ -1,0 +1,6 @@
+ansible_become_password: "{{ vault_ansible_become_password }}"
+ansible_sudo_pass: "{{ vault_ansible_become_password }}"
+nas_smb_username: "{{ vault_nas_smb_username }}"
+nas_smb_password: "{{ vault_nas_smb_password }}"
+
+nas_ip: "192.168.1.8"   # IP de ton NAS Synology
