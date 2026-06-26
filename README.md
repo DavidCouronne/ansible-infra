@@ -117,5 +117,6 @@ ansible-vault edit group_vars/all/vault.yml
 > - Montages NAS via unités systemd.mount (pas de fstab, OS immuable)
 > - Jellyfin déployé via Podman quadlet (.container)
 > - Secrets dans Ansible Vault, clé dans `.vault_pass`
+> - Les templates Jinja sont dans `playbooks/templates/` (pas à la racine)
 >
 > Je veux continuer à [DÉCRIRE LA SUITE].
