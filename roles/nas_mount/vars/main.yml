@@ -1,0 +1,6 @@
+---
+target_mount_path: "{{ ansible_user_dir }}/{{ mount_subdir }}"
+escaped_mount_name: "{{ target_mount_path | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
+credentials_path: "{{ ansible_user_dir }}/.smb/credentials"
+wait_service_name: "wait-for-nas-{{ nas_share }}.service"
+wait_script_path: "/usr/local/bin/wait-for-nas-{{ nas_share }}.sh"

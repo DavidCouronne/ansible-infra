@@ -5,17 +5,17 @@
 
   vars:
     ansible_user: "famille"   # à adapter si besoin
-    jellyfin_config_dir: "/var/home/{{ ansible_user }}/.local/share/jellyfin/config"
-    jellyfin_cache_dir: "/var/home/{{ ansible_user }}/.local/share/jellyfin/cache"
-    container_dest: "/var/home/{{ ansible_user }}/.config/containers/systemd/jellyfin.container"
+    jellyfin_config_dir: "{{ ansible_user_dir }}/.local/share/jellyfin/config"
+    jellyfin_cache_dir: "{{ ansible_user_dir }}/.local/share/jellyfin/cache"
+    container_dest: "{{ ansible_user_dir }}/.config/containers/systemd/jellyfin.container"
     
     selinux_paths:
-      - "/var/home/{{ ansible_user }}/internes/exos/Videos"
+      - "{{ ansible_user_dir }}/internes/exos/Videos"
 
     # Montages NAS nécessaires pour Jellyfin
     required_mounts:
-      - "var-home-famille-nas-video.mount"
-      - "var-home-famille-nas-PlexMediaServer.mount"
+      - "{{ (ansible_user_dir ~ '/nas/video') | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
+      - "{{ (ansible_user_dir ~ '/nas/PlexMediaServer') | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
 
   tasks:
 
@@ -32,7 +32,7 @@
 
     - name: Créer répertoire systemd user
       ansible.builtin.file:
-        path: "/var/home/{{ ansible_user }}/.config/containers/systemd"
+        path: "{{ ansible_user_dir }}/.config/containers/systemd"
         state: directory
         mode: "0755"
         owner: "{{ ansible_user }}"

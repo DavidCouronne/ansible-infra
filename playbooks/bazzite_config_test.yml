@@ -4,8 +4,8 @@
   gather_facts: true
 
   vars:
-    test_local_path: "/var/home/{{ ansible_user }}/.local/share/infra_test_local"
-    test_samba_path: "/var/home/{{ ansible_user }}/nas/video"
+    test_local_path: "{{ ansible_user_dir }}/.local/share/infra_test_local"
+    test_samba_path: "{{ ansible_user_dir }}/nas/video"
 
   tasks:
     - name: "Préparation : Garantir la présence du dossier local de test"

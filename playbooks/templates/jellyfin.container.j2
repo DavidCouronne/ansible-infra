@@ -1,11 +1,7 @@
 [Unit]
 Description=Jellyfin Media Server
-Description=Jellyfin Media Server
-After=network-online.target
+After=network-online.target {{ required_mounts | join(' ') }}
 Wants=network-online.target
-
-# Dépendances plus souples (seulement After, pas Requires)
-After=var-home-famille-nas-video.mount var-home-famille-nas-PlexMediaServer.mount
 
 [Container]
 Image=docker.io/jellyfin/jellyfin:latest
@@ -13,14 +9,14 @@ ContainerName=jellyfin
 
 # Config et cache
 Volume={{ jellyfin_config_dir }}:/config:Z
-Volume={{ jellyfin_cache_dir }}:/cache:Z
+Volume={{ jellyfin_cache_dir }}/cache:/cache:Z
 
 # Médiathèques NAS
-Volume=/var/home/{{ ansible_user }}/nas/video:/media/video:ro
-Volume=/var/home/{{ ansible_user }}/nas/PlexMediaServer:/media/plex:ro
+Volume={{ ansible_user_dir }}/nas/video:/media/video:ro
+Volume={{ ansible_user_dir }}/nas/PlexMediaServer:/media/plex:ro
 
 # Disque interne
-Volume=/var/home/{{ ansible_user }}/internes/exos/Videos:/media/exos:ro
+Volume={{ ansible_user_dir }}/internes/exos/Videos:/media/exos:ro
 
 Network=host
 PublishPort=127.0.0.1:8096:8096

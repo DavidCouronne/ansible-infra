@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NAS_IP="{{ nas_ip }}"
+NAS_SHARE="{{ nas_share }}"
+
+echo "=== Attente du NAS ${NAS_IP} (port 445) pour le partage ${NAS_SHARE} ==="
+
+for i in {1..60}; do
+    if timeout 1 bash -c "</dev/tcp/${NAS_IP}/445" 2>/dev/null; then
+        echo "✅ NAS joignable !"
+        sleep 2
+        exit 0
+    fi
+    echo "Tentative $i/60 - NAS non joignable, nouvelle tentative dans 3s..."
+    sleep 3
+done
+
+echo "❌ Timeout : NAS non joignable après 3 minutes"
+exit 1

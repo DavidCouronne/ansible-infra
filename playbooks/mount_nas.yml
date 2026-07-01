@@ -1,0 +1,13 @@
+---
+- name: Montage persistant NAS Samba (version refactorisée)
+  hosts: bazzite_hosts
+  gather_facts: true
+
+  tasks:
+    - name: Configurer les points de montage Samba du NAS
+      ansible.builtin.include_role:
+        name: nas_mount
+      vars:
+        nas_share: "{{ item.share }}"
+        mount_subdir: "{{ item.subdir }}"
+      loop: "{{ nas_mounts }}"

@@ -4,3 +4,9 @@ nas_smb_username: "{{ vault_nas_smb_username }}"
 nas_smb_password: "{{ vault_nas_smb_password }}"
 
 nas_ip: "192.168.1.8"   # IP de ton NAS Synology
+
+nas_mounts:
+  - share: "video"
+    subdir: "nas/video"
+  - share: "PlexMediaServer"
+    subdir: "nas/PlexMediaServer"
